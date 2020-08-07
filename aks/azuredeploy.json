@@ -17,14 +17,14 @@
         },
         "vnetAddress": {
             "type": "string",
-            "defaultValue": "",
+            "defaultValue": "10.0.0.0/16",
             "metadata": {
                 "description": "Virtual Network Address. In CIDR format X.X.X.X/X"
             }
         },
         "podSubnetAddress": {
             "type": "string",
-            "defaultValue": "",
+            "defaultValue": "10.0.0.0/21",
             "metadata": {
                 "description": "Pod and Node Subnet Address. In CIDR format X.X.X.X/X. Must be a segment of the vnetAddress var"
             }
@@ -71,7 +71,15 @@
                 "azure",
                 "kubenet"
             ]
-        }        
+        },
+        "networkPolicy": {
+            "type": "string",
+            "defaultValue": "azure",
+            "allowedValues": [
+                "azure",
+                "calico"
+            ]
+        }                 
     },
     "resources": [
         {
@@ -89,7 +97,7 @@
           "apiVersion": "2019-04-01",
           "location": "[resourceGroup().location]",
           "dependsOn": [
-            "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-NSG'))]"
+            "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
           ],
           "properties": {
             "addressSpace": {
@@ -125,6 +133,11 @@
             "type": "Microsoft.ContainerService/managedClusters",
             "location": "[parameters('location')]",
             "name": "[parameters('clusterName')]",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/virtualNetworks', concat(parameters('clusterName'), '-vnet'))]",
+              "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]",
+              "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('clusterName'), '-vnet'), 'podsnodes')]"
+            ],            
             "identity": {
                 "type": "SystemAssigned"
             },
@@ -134,6 +147,7 @@
                     {
                         "name": "node1",
                         "osDiskSizeGB": "[parameters('osDiskSizeGB')]",
+                        "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('clusterName'), '-Vnet'), 'podsnodes')]",
                         "count": "[parameters('agentCount')]",
                         "vmSize": "[parameters('agentVMSize')]",
                         "osType": "[parameters('osType')]",
@@ -142,10 +156,14 @@
                     }
                 ],
                 "networkProfile": {
-                    "networkPlugin": "[parameters('networkPlugin')]"
+                    "networkPlugin": "[parameters('networkPlugin')]",
+                    "networkPolicy": "[parameters('networkPolicy')]",
+                    "serviceCidr": "172.16.0.0/21",
+                    "dnsServiceIP": "172.16.0.10",
+                    "dockerBridgeCidr": "172.17.0.1/16"
                 }
             }
-        },    
+        },
         {
             "apiVersion": "2020-06-01",
             "type": "Microsoft.ContainerService/managedClusters/agentPools",
@@ -157,6 +175,7 @@
               "count": 3,
               "vmSize": "[parameters('agentVMSize')]",
               "osDiskSizeGB": "[parameters('osDiskSizeGB')]",
+              "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('clusterName'), '-Vnet'), 'podsnodes')]",
               "maxPods": 30,
               "type": "VirtualMachineScaleSets",
               "orchestratorVersion": "1.16.10",
