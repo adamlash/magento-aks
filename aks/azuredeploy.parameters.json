@@ -4,15 +4,6 @@
     "parameters": {
         "clusterName": {
             "value": "clustername"
-        },
-        "dnsPrefix": {
-            "value": ""
-        },
-        "linuxAdminUsername": {
-            "value": "clusteruser"
-        },
-        "sshRSAPublicKey": {
-            "value": "aaaaa1234123"
         }
     }
 }
