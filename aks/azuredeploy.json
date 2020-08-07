@@ -15,6 +15,20 @@
                 "description": "The location of the Managed Cluster resource."
             }
         },
+        "vnetAddress": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Virtual Network Address. In CIDR format X.X.X.X/X"
+            }
+        },
+        "podSubnetAddress": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Pod and Node Subnet Address. In CIDR format X.X.X.X/X. Must be a segment of the vnetAddress var"
+            }
+        },                     
         "osDiskSizeGB": {
             "type": "int",
             "defaultValue": 0,
@@ -60,7 +74,52 @@
         }        
     },
     "resources": [
-
+        {
+          "apiVersion": "2019-09-01",
+          "type": "Microsoft.Network/networkSecurityGroups",          
+          "name": "[concat(parameters('clusterName'), '-nsg')]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "securityRules": []
+          }
+        },
+        {
+          "name": "[concat(parameters('clusterName'), '-vnet')]",
+          "type": "Microsoft.Network/virtualNetworks",
+          "apiVersion": "2019-04-01",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-NSG'))]"
+          ],
+          "properties": {
+            "addressSpace": {
+              "addressPrefixes": [
+                "[parameters('vnetAddress')]"
+              ]
+            },
+            "virtualNetworkPeerings": [],
+            "enableDdosProtection": false,
+            "enableVmProtection": false
+          }
+        },
+        {
+          "type": "Microsoft.Network/virtualNetworks/subnets",
+          "apiVersion": "2019-09-01",
+          "name": "[concat(parameters('clusterName'), '-vnet/podsnodes')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Network/virtualNetworks', concat(parameters('clusterName'), '-vnet'))]",
+            "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
+          ],
+          "properties": {
+            "addressPrefix": "[parameters('podSubnetAddress')]",
+            "networkSecurityGroup": {
+              "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
+            },
+            "delegations": [],
+            "privateEndpointNetworkPolicies": "Enabled",
+            "privaTELinkServiceNetworkPolicies": "Enabled"
+          }
+        },        
         {
             "apiVersion": "2020-06-01",
             "type": "Microsoft.ContainerService/managedClusters",
