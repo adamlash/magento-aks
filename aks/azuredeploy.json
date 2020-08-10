@@ -8,6 +8,13 @@
                 "description": "The name of the Managed Cluster resource."
             }
         },
+        "kubernetesVersion": {
+            "type": "string",
+            "defaultValue": "1.16.13",
+            "metadata": {
+                "description": "Version of Kubernetes Mgmt PLane"
+            }
+        },        
         "location": {
             "type": "string",
             "defaultValue": "[resourceGroup().location]",
@@ -40,7 +47,7 @@
         },
         "agentCount": {
             "type": "int",
-            "defaultValue": 3,
+            "defaultValue": 1,
             "metadata": {
                 "description": "The number of nodes for the cluster."
             },
@@ -53,7 +60,7 @@
             "metadata": {
                 "description": "The size of the Virtual Machine."
             }
-        },
+        },      
         "osType": {
             "type": "string",
             "defaultValue": "Linux",
@@ -107,27 +114,41 @@
             },
             "virtualNetworkPeerings": [],
             "enableDdosProtection": false,
-            "enableVmProtection": false
+            "enableVmProtection": false,
+            "subnets": [
+                {
+                    "name": "podsnodes",
+                    "properties": {
+                        "addressPrefix": "[parameters('podSubnetAddress')]",
+                        "networkSecurityGroup": {
+                          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
+                        },
+                        "delegations": [],
+                        "privateEndpointNetworkPolicies": "Enabled",
+                        "privateLinkServiceNetworkPolicies": "Enabled"    
+                    }
+                }
+
+            ]
           }
         },
         {
-          "type": "Microsoft.Network/virtualNetworks/subnets",
-          "apiVersion": "2019-09-01",
-          "name": "[concat(parameters('clusterName'), '-vnet/podsnodes')]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Network/virtualNetworks', concat(parameters('clusterName'), '-vnet'))]",
-            "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
-          ],
+          "type": "Microsoft.OperationalInsights/workspaces",
+          "name": "[concat(parameters('clusterName'), '-workspace')]",
+          "apiVersion": "2020-03-01-preview",
+          "location": "[parameters('location')]",
           "properties": {
-            "addressPrefix": "[parameters('podSubnetAddress')]",
-            "networkSecurityGroup": {
-              "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
+            "sku": {
+              "name": "pergb2018"
             },
-            "delegations": [],
-            "privateEndpointNetworkPolicies": "Enabled",
-            "privaTELinkServiceNetworkPolicies": "Enabled"
+            "retentionInDays": 30,
+            "features": {
+              "searchVersion": 1,
+              "legacy": 0,
+              "enableLogAccessUsingOnlyResourcePermissions": true
+            }
           }
-        },        
+        },                
         {
             "apiVersion": "2020-06-01",
             "type": "Microsoft.ContainerService/managedClusters",
@@ -136,13 +157,14 @@
             "dependsOn": [
               "[resourceId('Microsoft.Network/virtualNetworks', concat(parameters('clusterName'), '-vnet'))]",
               "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]",
-              "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('clusterName'), '-vnet'), 'podsnodes')]"
+              "[resourceId('Microsoft.OperationalInsights/workspaces', concat(parameters('clusterName'), '-workspace'))]"
             ],            
             "identity": {
                 "type": "SystemAssigned"
             },
             "properties": {
                 "dnsPrefix": "[concat(parameters('clusterName'), '-dns')]",
+                "kubernetesVersion": "[parameters('kubernetesVersion')]",
                 "agentPoolProfiles": [
                     {
                         "name": "node1",
@@ -150,6 +172,7 @@
                         "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('clusterName'), '-Vnet'), 'podsnodes')]",
                         "count": "[parameters('agentCount')]",
                         "vmSize": "[parameters('agentVMSize')]",
+                        "orchestratorVersion": "1.16.13",
                         "osType": "[parameters('osType')]",
                         "storageProfile": "ManagedDisks",
                         "mode": "System"
@@ -161,6 +184,14 @@
                     "serviceCidr": "172.16.0.0/21",
                     "dnsServiceIP": "172.16.0.10",
                     "dockerBridgeCidr": "172.17.0.1/16"
+                },
+                "addonProfiles": {
+                    "omsagent": {
+                        "enabled": true,
+                        "config": {
+                            "logAnalyticsWorkspaceResourceID": "[resourceId('Microsoft.OperationalInsights/workspaces', concat(parameters('clusterName'), '-workspace'))]"
+                        }
+                    }
                 }
             }
         },
@@ -172,16 +203,16 @@
                 "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
             ],
             "properties": {
-              "count": 3,
+              "count": "[parameters('agentCount')]",
               "vmSize": "[parameters('agentVMSize')]",
               "osDiskSizeGB": "[parameters('osDiskSizeGB')]",
               "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('clusterName'), '-Vnet'), 'podsnodes')]",
               "maxPods": 30,
               "type": "VirtualMachineScaleSets",
-              "orchestratorVersion": "1.16.10",
+              "orchestratorVersion": "1.16.13",
               "osType": "[parameters('osType')]",
               "enableAutoScaling": true,
-              "minCount": 3,
+              "minCount": "[parameters('agentCount')]",
               "maxCount": 20,
               "mode": "System"
             }
