@@ -18,7 +18,7 @@ az deployment group create --confirm-with-what-if --resource-group RESOURCEGROUP
 
 ## Post-Deployment
 Once deployed...
-- Authenticate against the cluster with 
+- Authenticate against the cluster:
 ```
 az aks get-credentials --resource-group RESOURCEGROUP --name CLUSTERNAME
 ```
