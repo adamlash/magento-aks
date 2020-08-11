@@ -90,22 +90,10 @@
     },
     "resources": [
         {
-          "apiVersion": "2019-09-01",
-          "type": "Microsoft.Network/networkSecurityGroups",          
-          "name": "[concat(parameters('clusterName'), '-nsg')]",
-          "location": "[parameters('location')]",
-          "properties": {
-            "securityRules": []
-          }
-        },
-        {
           "name": "[concat(parameters('clusterName'), '-vnet')]",
           "type": "Microsoft.Network/virtualNetworks",
           "apiVersion": "2019-04-01",
           "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
-          ],
           "properties": {
             "addressSpace": {
               "addressPrefixes": [
@@ -120,9 +108,6 @@
                     "name": "podsnodes",
                     "properties": {
                         "addressPrefix": "[parameters('podSubnetAddress')]",
-                        "networkSecurityGroup": {
-                          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]"
-                        },
                         "delegations": [],
                         "privateEndpointNetworkPolicies": "Enabled",
                         "privateLinkServiceNetworkPolicies": "Enabled"    
@@ -156,7 +141,6 @@
             "name": "[parameters('clusterName')]",
             "dependsOn": [
               "[resourceId('Microsoft.Network/virtualNetworks', concat(parameters('clusterName'), '-vnet'))]",
-              "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('clusterName'), '-nsg'))]",
               "[resourceId('Microsoft.OperationalInsights/workspaces', concat(parameters('clusterName'), '-workspace'))]"
             ],            
             "identity": {
@@ -183,7 +167,8 @@
                     "networkPolicy": "[parameters('networkPolicy')]",
                     "serviceCidr": "172.16.0.0/21",
                     "dnsServiceIP": "172.16.0.10",
-                    "dockerBridgeCidr": "172.17.0.1/16"
+                    "dockerBridgeCidr": "172.17.0.1/16",
+                    "loadBalancerSku": "standard"
                 },
                 "addonProfiles": {
                     "omsagent": {
