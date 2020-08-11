@@ -4,7 +4,7 @@
     "parameters": {
         "name": {
             "type": "string",
-            "defaultValue": "dsrkube",
+            "defaultValue": "defaultclustername",
             "metadata": {
                 "description": "The base name of the Kubernetes cluster and related resources."
             }
