@@ -1,0 +1,1071 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "type": "string",
+            "defaultValue": "defaultclustername",
+            "metadata": {
+                "description": "The base name of the Kubernetes cluster and related resources."
+            }
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "The location where the resources will be deployed."
+            }
+        },
+        "logAnalyticsSku": {
+            "defaultValue": "PerGB2018",
+            "allowedValues": [
+                "CapacityReservation",
+                "Free",
+                "PerGB2018",
+                "PerNode",
+                "Premium",
+                "Standalone",
+                "Standard"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "The SKU of the Log Analytics workspace to create."
+            }
+        },
+        "containerRegistrySku": {
+            "defaultValue": "Premium",
+            "allowedValues": [
+                "Basic",
+                "Classic",
+                "Standard",
+                "Premium"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "The SKU of the Azure Container Registry to create."
+            }
+        },
+        "containerRegistryPrivateLink": {
+            "defaultValue": true,
+            "type": "bool",
+            "metadata": {
+                "description": "Boolean flag to connect the container registry to the cluster nodes VNET using a Private Link endpoint."
+            }
+        },
+        "containerRegistryPrivateLinkDnsZoneName": {
+            "defaultValue": "privatelink.azurecr.io",
+            "type": "string",
+            "metadata": {
+                "description": "The name of the Private Link DNS private zone."
+            }
+        },
+        "containerRegistryPublicNetworkAccess": {
+            "defaultValue": "Enabled",
+            "allowedValues": [
+                "Enabled",
+                "Disabled"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "Specifies whether or not public network access is allowed to the container registry."
+            }
+        },
+        "kubernetesVersion": {
+            "defaultValue": "1.18.4",
+            "type": "string",
+            "metadata": {
+                "description": "The version of Kubernetes."
+            }
+        },
+        "clusterAdminGroupObjectIds": {
+            "defaultValue": [],
+            "type": "array",
+            "metadata": {
+                "description": "Array of Azure AD Group object Ids to use for cluster administrators."
+            }
+        },
+        "clusterEnableHttpApplicationRouting": {
+            "defaultValue": false,
+            "type": "bool",
+            "metadata": {
+                "description": "Boolean flag to turn on and off of http application routing."
+            }
+        },
+        "clusterEnableKubeDashboard": {
+            "defaultValue": true,
+            "type": "bool",
+            "metadata": {
+                "description": "Boolean flag to turn on and off of kubernetes dashboard."
+            }
+        },
+        "clusterEnableRbac": {
+            "defaultValue": true,
+            "type": "bool",
+            "metadata": {
+                "description": "boolean flag to turn on and off of RBAC"
+            }
+        },
+        "vnetAddressPrefix": {
+            "defaultValue": "10.0.0.0/8",
+            "type": "string",
+            "metadata": {
+                "description": "The address space of the virtual network to put the cluster nodes into."
+            }
+        },
+        "vnetSubnetName": {
+            "defaultValue": "clusterNodesSubnet",
+            "type": "string",
+            "metadata": {
+                "description": "The name of the subnet of the virtual network to put the cluster nodes into."
+            }
+        },
+        "vnetSubnetPrefix": {
+            "defaultValue": "10.240.0.0/16",
+            "type": "string",
+            "metadata": {
+                "description": "The address space of the subnet of the virtual network to put the cluster nodes into."
+            }
+        },
+        "clusterNetworkPlugin": {
+            "allowedValues": [
+                "azure",
+                "kubenet"
+            ],
+            "defaultValue": "azure",
+            "type": "string",
+            "metadata": {
+                "description": "Network plugin used for building Kubernetes network."
+            }
+        },
+        "clusterServiceCidr": {
+            "type": "string",
+            "defaultValue": "10.0.0.0/16",
+            "metadata": {
+                "description": "The CIDR notation IP range from which to assign Kubernetes service cluster IPs."
+            }
+        },
+        "clusterDnsServiceIp": {
+            "type": "string",
+            "defaultValue": "10.0.0.10",
+            "metadata": {
+                "description": "Kubernetes containers DNS server IP address."
+            }
+        },
+        "clusterDockerBridgeCidr": {
+            "type": "string",
+            "defaultValue": "172.17.0.1/16",
+            "metadata": {
+                "description": "The CIDR notation IP for Docker bridge in the Kubernetes cluster."
+            }
+        },
+        "clusterNetworkPolicy": {
+            "type": "string",
+            "defaultValue": "azure",
+            "allowedValues": [
+                "calico",
+                "azure"
+            ],
+            "metadata": {
+                "description": "The Kubernetes cluster network policy to use."
+            }
+        },
+        "clusterNetworkLoadBalancerSku": {
+            "type": "string",
+            "defaultValue": "standard",
+            "allowedValues": [
+                "standard",
+                "basic"
+            ],
+            "metadata": {
+                "description": "The Kubernetes cluster network load balancer SKU. Set to standard if node pools should support availability zones."
+            }
+        },
+        "systemNodePoolOsDiskSizeGB": {
+            "defaultValue": 500,
+            "minValue": 0,
+            "maxValue": 1023,
+            "type": "int",
+            "metadata": {
+                "description": "Disk size (in GB) to provision for each of the system agent pool nodes. This value ranges from 0 to 1023. Specifying 0 will apply the default disk size for that agentVMSize."
+            }
+        },
+        "systemNodePoolNodeCount": {
+            "defaultValue": 2,
+            "minValue": 1,
+            "maxValue": 50,
+            "type": "int",
+            "metadata": {
+                "description": "The number of system agent nodes for the cluster. Production workloads have a recommended minimum of 3."
+            }
+        },
+        "systemNodePoolMinNodeCount": {
+            "defaultValue": 2,
+            "minValue": 1,
+            "maxValue": 50,
+            "type": "int",
+            "metadata": {
+                "description": "The minimum number of system agent nodes the cluster will scale in to. Production workloads have a recommended minimum of 3."
+            }
+        },
+        "systemNodePoolMaxNodeCount": {
+            "defaultValue": 5,
+            "minValue": 1,
+            "maxValue": 50,
+            "type": "int",
+            "metadata": {
+                "description": "The maximum number of system agent nodes the cluster will scale out to. Production workloads have a recommended minimum of 3."
+            }
+        },
+        "systemNodePoolVmSize": {
+            "defaultValue": "Standard_D2_v2",
+            "type": "string",
+            "metadata": {
+                "description": "The size of the Virtual Machines for the system agent nodes."
+            }
+        },
+        "systemNodePoolMaxPods": {
+            "defaultValue": 30,
+            "minValue": 30,
+            "maxValue": 100,
+            "type": "int",
+            "metadata": {
+                "description": "Maximum number of pods that can run on each system agent node."
+            }
+        },
+        "workloadLinuxNodePool": {
+            "defaultValue": {
+                "name": "linux01",
+                "count": 2,
+                "minCount": 2
+            },
+            "type": "object",
+            "metadata": {
+                "description": "The Linux workload node pool"
+            }
+        }
+    },
+    "variables": {
+        "clusterName": "[parameters('name')]",
+        "vnetName": "[concat(parameters('name'),'-vnet')]",
+        "containerRegistryName": "[parameters('name')]",
+        "containerRegistryPrivateLinkName": "[concat(parameters('name'),'-ple')]",
+        "logAnalyticsWorkspaceName": "[concat(parameters('name'),'-law')]",
+        "clusterDnsPrefix": "[parameters('name')]",
+        "vnetSubnetId": "[concat(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '/subnets/', parameters('vnetSubnetName'))]",
+        "systemPoolProfile": [
+            {
+                "name": "agentpool",
+                "osType": "Linux",
+                "enableAutoScaling": true,
+                "count": "[parameters('systemNodePoolNodeCount')]",
+                "minCount": "[parameters('systemNodePoolMinNodeCount')]",
+                "maxCount": "[parameters('systemNodePoolMaxNodeCount')]",
+                "vmSize": "[parameters('systemNodePoolVmSize')]",
+                "osDiskSizeGB": "[parameters('systemNodePoolOsDiskSizeGB')]",
+                "type": "VirtualMachineScaleSets",
+                "storageProfile": "ManagedDisks",
+                "vnetSubnetId": "[variables('vnetSubnetId')]",
+                "maxPods": "[parameters('systemNodePoolMaxPods')]",
+                "mode": "System"
+            }
+        ],
+        "defaultLinuxPoolProfile": {
+            "name": "linuxPool",
+            "osDiskSizeGB": 500,
+            "count": 3,
+            "vmSize": "Standard_D2_v2",
+            "osType": "Linux",
+            "storageProfile": "ManagedDisks",
+            "maxPods": 30,
+            "type": "VirtualMachineScaleSets",
+            "enableAutoScaling": true,
+            "minCount": 3,
+            "maxCount": 5,
+            "mode": "User",
+            "availabilityZones": [ "1","2","3" ]
+        },
+        "workloadLinuxNodePoolWithSubnetId": "[dsr.setSubnetIdInWorkloadNodePool(parameters('workloadLinuxNodePool'), variables('defaultLinuxPoolProfile'), variables('vnetSubnetId'))]",
+        "agentPoolProfiles": "[concat(array(variables('systemPoolProfile')), array(variables('workloadLinuxNodePoolWithSubnetId')))]"
+    },
+    "resources": [
+        {
+            "name": "[variables('clusterName')]",
+            "type": "Microsoft.ContainerService/managedClusters",
+            "apiVersion": "2020-04-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "Microsoft.Resources/deployments/VirtualNetworkDeployment",
+                "Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment"
+            ],
+            "properties": {
+                "kubernetesVersion": "[parameters('kubernetesVersion')]",
+                "enableRBAC": "[parameters('clusterEnableRbac')]",
+                "dnsPrefix": "[variables('clusterDnsPrefix')]",
+                "aadProfile": {
+                    "managed": true,
+                    "adminGroupObjectIds": "[parameters('clusterAdminGroupObjectIds')]",
+                    "tenantId": "[subscription().tenantId]"
+                },
+                "addonProfiles": {
+                    "httpApplicationRouting": {
+                        "enabled": "[parameters('clusterEnableHttpApplicationRouting')]"
+                    },
+                    "KubeDashboard": {
+                        "enabled": "[parameters('clusterEnableKubeDashboard')]"
+                    },
+                    "omsAgent": {
+                        "enabled": true,
+                        "config": {
+                            "logAnalyticsWorkspaceResourceID": "[reference('Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment').outputs.logAnalyticsWorkspaceId.value]"
+                        }
+                    }
+                },
+                "agentPoolProfiles": "[variables('agentPoolProfiles')]",
+                "networkProfile": {
+                    "networkPlugin": "[parameters('clusterNetworkPlugin')]",
+                    "serviceCidr": "[parameters('clusterServiceCidr')]",
+                    "dnsServiceIP": "[parameters('clusterDnsServiceIp')]",
+                    "dockerBridgeCidr": "[parameters('clusterDockerBridgeCidr')]",
+                    "networkPolicy": "[parameters('clusterNetworkPolicy')]",
+                    "loadBalancerSku": "[parameters('clusterNetworkLoadBalancerSku')]"
+                }
+            },
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "resources": [
+                {
+                    "type": "providers/diagnosticSettings",
+                    "apiVersion": "2017-05-01-preview",
+                    "name": "[concat('/Microsoft.Insights/', 'Send to ', variables('logAnalyticsWorkspaceName'))]",
+                    "dependsOn": [
+                        "[variables('clusterName')]"
+                    ],
+                    "properties": {
+                        "workspaceId": "[reference('Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment').outputs.logAnalyticsWorkspaceId.value]",
+                        "metrics": [
+                            {
+                                "category": "AllMetrics",
+                                "enabled": true,
+                                "retentionPolicy": {
+                                    "days": 0,
+                                    "enabled": false
+                                },
+                                "timeGrain": null
+                            }
+                        ],
+                        "logs": [
+                            {
+                                "category": "kube-apiserver",
+                                "enabled": true
+                            },
+                            {
+                                "category": "kube-audit",
+                                "enabled": true
+                            },
+                            {
+                                "category": "kube-controller-manager",
+                                "enabled": true
+                            },
+                            {
+                                "category": "kube-scheduler",
+                                "enabled": true
+                            },
+                            {
+                                "category": "cluster-autoscaler",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "LogAnalyticsWorkspaceDeployment",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[resourceGroup().name]",
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "logAnalyticsWorkspaceName": {
+                        "value": "[variables('logAnalyticsWorkspaceName')]"
+                    },
+                    "logAnalyticsSku": {
+                        "value": "[parameters('logAnalyticsSku')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "location": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceName": {
+                            "type": "string"
+                        },
+                        "logAnalyticsSku": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {
+                        "containerInsightsSolutionName": "[concat('ContainerInsights', '(', parameters('logAnalyticsWorkspaceName'), ')')]"
+                    },
+                    "resources": [
+                        {
+                            "name": "[parameters('logAnalyticsWorkspaceName')]",
+                            "apiVersion": "2015-11-01-preview",
+                            "type": "Microsoft.OperationalInsights/workspaces",
+                            "location": "[parameters('location')]",
+                            "properties": {
+                                "sku": {
+                                    "name": "[parameters('logAnalyticsSku')]"
+                                }
+                            }
+                        },
+                        {
+                            "name": "[variables('containerInsightsSolutionName')]",
+                            "apiVersion": "2015-11-01-preview",
+                            "type": "Microsoft.OperationsManagement/solutions",
+                            "location": "[parameters('location')]",
+                            "properties": {
+                                "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+                            },
+                            "plan": {
+                                "name": "[variables('containerInsightsSolutionName')]",
+                                "product": "[concat('OMSGallery/', 'ContainerInsights')]",
+                                "promotionCode": "",
+                                "publisher": "Microsoft"
+                            }
+                        }
+                    ],
+                    "outputs": {
+                        "logAnalyticsWorkspaceId": {
+                            "type": "string",
+                            "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "ContainerRegistryDeployment",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[resourceGroup().name]",
+            "dependsOn": [
+                "Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "containerRegistryName": {
+                        "value": "[variables('containerRegistryName')]"
+                    },
+                    "containerRegistrySku": {
+                        "value": "[parameters('containerRegistrySku')]"
+                    },
+                    "containerRegistryPublicNetworkAccess": {
+                        "value": "[parameters('containerRegistryPublicNetworkAccess')]"
+                    },
+                    "logAnalyticsWorkspaceName": {
+                        "value": "[variables('logAnalyticsWorkspaceName')]"
+                    },
+                    "logAnalyticsWorkspaceId": {
+                        "value": "[reference('Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment').outputs.logAnalyticsWorkspaceId.value]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "location": {
+                            "type": "string"
+                        },
+                        "containerRegistryName": {
+                            "type": "string"
+                        },
+                        "containerRegistrySku": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceName": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceId": {
+                            "type": "string"
+                        },
+                        "containerRegistryPublicNetworkAccess": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {},
+                    "resources": [
+                        {
+                            "type": "Microsoft.ContainerRegistry/registries",
+                            "apiVersion": "2019-12-01-preview",
+                            "name": "[parameters('containerRegistryName')]",
+                            "location": "[parameters('location')]",
+                            "sku": {
+                                "name": "[parameters('containerRegistrySku')]"
+                            },
+                            "identity": {
+                                "type": "SystemAssigned"
+                            },
+                            "properties": {
+                                "adminUserEnabled": false,
+                                "publicNetworkAccess": "[parameters('containerRegistryPublicNetworkAccess')]"
+                            },
+                            "resources": [
+                                {
+                                    "type": "providers/diagnosticSettings",
+                                    "apiVersion": "2017-05-01-preview",
+                                    "name": "[concat('/Microsoft.Insights/', 'Send to ', parameters('logAnalyticsWorkspaceName'))]",
+                                    "dependsOn": [
+                                        "[parameters('containerRegistryName')]"
+                                    ],
+                                    "properties": {
+                                        "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                                        "metrics": [
+                                            {
+                                                "category": "AllMetrics",
+                                                "enabled": true,
+                                                "retentionPolicy": {
+                                                    "days": 0,
+                                                    "enabled": false
+                                                },
+                                                "timeGrain": null
+                                            }
+                                        ],
+                                        "logs": [
+                                            {
+                                                "category": "ContainerRegistryRepositoryEvents",
+                                                "enabled": true
+                                            },
+                                            {
+                                                "category": "ContainerRegistryLoginEvents",
+                                                "enabled": true
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "outputs": {
+                        "containerRegistryId": {
+                            "type": "string",
+                            "value": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "ClusterContainerRegistryRoleAssignmentDeployment",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[resourceGroup().name]",
+            "dependsOn": [
+                "[concat('Microsoft.ContainerService/managedClusters/', variables('clusterName'))]",
+                "[resourceId('Microsoft.Resources/deployments', 'ContainerRegistryDeployment')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "containerRegistryName": {
+                        "value": "[variables('containerRegistryName')]"
+                    },
+                    "clusterName": {
+                        "value": "[variables('clusterName')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "containerRegistryName": {
+                            "type": "string"
+                        },
+                        "clusterName": {
+                            "type": "string"
+                        }
+                    },
+                    "resources": [
+                        {
+                            "apiVersion": "2018-09-01-preview",
+                            "type": "Microsoft.ContainerRegistry/registries/providers/roleAssignments",
+                            "name": "[concat(parameters('containerRegistryName'), '/Microsoft.Authorization/9fea2f7c-f0fb-4f7c-ac93-61349d0d196b')]",
+                            "properties": {
+                                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+                                "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-03-01').identityProfile.kubeletidentity.objectId]",
+                                "principalType": "ServicePrincipal",
+                                "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "VirtualNetworkDeployment",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[resourceGroup().name]",
+            "dependsOn": [
+                "Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "vnetName": {
+                        "value": "[variables('vnetName')]"
+                    },
+                    "vnetAddressPrefix": {
+                        "value": "[parameters('vnetAddressPrefix')]"
+                    },
+                    "vnetSubnetName": {
+                        "value": "[parameters('vnetSubnetName')]"
+                    },
+                    "vnetSubnetPrefix": {
+                        "value": "[parameters('vnetSubnetPrefix')]"
+                    },
+                    "logAnalyticsWorkspaceName": {
+                        "value": "[variables('logAnalyticsWorkspaceName')]"
+                    },
+                    "logAnalyticsWorkspaceId": {
+                        "value": "[reference('Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment').outputs.logAnalyticsWorkspaceId.value]"
+                    },
+                    "containerRegistryPrivateLink": {
+                        "value": "[parameters('containerRegistryPrivateLink')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "location": {
+                            "type": "string"
+                        },
+                        "vnetName": {
+                            "type": "string"
+                        },
+                        "vnetAddressPrefix": {
+                            "type": "string"
+                        },
+                        "vnetSubnetName": {
+                            "type": "string"
+                        },
+                        "vnetSubnetPrefix": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceName": {
+                            "type": "string"
+                        },
+                        "logAnalyticsWorkspaceId": {
+                            "type": "string"
+                        },
+                        "containerRegistryPrivateLink": {
+                            "type": "bool"
+                        }
+                    },
+                    "variables": {},
+                    "resources": [
+                        {
+                            "apiVersion": "2018-06-01",
+                            "type": "Microsoft.Network/virtualNetworks",
+                            "name": "[parameters('vnetName')]",
+                            "location": "[parameters('location')]",
+                            "properties": {
+                                "addressSpace": {
+                                    "addressPrefixes": [
+                                        "[parameters('vnetAddressPrefix')]"
+                                    ]
+                                },
+                                "subnets": [
+                                    {
+                                        "name": "[parameters('vnetSubnetName')]",
+                                        "properties": {
+                                             "addressPrefix": "[parameters('vnetSubnetPrefix')]",
+                                             "privateEndpointNetworkPolicies": "[if(parameters('containerRegistryPrivateLink'), 'Disabled', 'Enabled')]"
+                                         }
+                                    }
+                                ]
+                            },
+                            "resources": [
+                                {
+                                    "type": "providers/diagnosticSettings",
+                                    "apiVersion": "2017-05-01-preview",
+                                    "name": "[concat('/Microsoft.Insights/', 'Send to ', parameters('logAnalyticsWorkspaceName'))]",
+                                    "dependsOn": [
+                                        "[parameters('vnetName')]"
+                                    ],
+                                    "properties": {
+                                        "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                                        "metrics": [
+                                            {
+                                                "category": "AllMetrics",
+                                                "enabled": true,
+                                                "retentionPolicy": {
+                                                    "days": 0,
+                                                    "enabled": false
+                                                },
+                                                "timeGrain": null
+                                            }
+                                        ],
+                                        "logs": [
+                                            {
+                                                "category": "VMProtectionAlerts",
+                                                "enabled": true
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "outputs": {
+                        "vnetId": {
+                            "type": "string",
+                            "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "vnetSubnetId": {
+                            "type": "string",
+                            "value": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/', parameters('vnetSubnetName'))]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "condition": "[parameters('containerRegistryPrivateLink')]",
+            "name": "ContainerRegistryPrivateLinkDeployment",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[resourceGroup().name]",
+            "dependsOn": [
+                "Microsoft.Resources/deployments/VirtualNetworkDeployment",
+                "Microsoft.Resources/deployments/ContainerRegistryDeployment"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "vnetName": {
+                        "value": "[variables('vnetName')]"
+                    },
+                    "vnetSubnetName": {
+                        "value": "[parameters('vnetSubnetName')]"
+                    },
+                    "containerRegistryName": {
+                        "value": "[variables('containerRegistryName')]"
+                    },
+                    "containerRegistryPrivateLinkDnsZoneName": {
+                        "value": "[parameters('containerRegistryPrivateLinkDnsZoneName')]"
+                    },
+                    "containerRegistryPrivateLinkName": {
+                        "value": "[variables('containerRegistryPrivateLinkName')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "location": {
+                            "type": "string"
+                        },
+                        "vnetName": {
+                            "type": "string"
+                        },
+                        "vnetSubnetName": {
+                            "type": "string"
+                        },
+                        "containerRegistryName": {
+                            "type": "string"
+                        },
+                        "containerRegistryPrivateLinkDnsZoneName": {
+                            "type": "string"
+                        },
+                        "containerRegistryPrivateLinkName": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {},
+                    "resources": [
+                        {
+                            "type": "Microsoft.Network/privateDnsZones",
+                            "apiVersion": "2018-09-01",
+                            "name": "[parameters('containerRegistryPrivateLinkDnsZoneName')]",
+                            "location": "global",
+                            "properties": {
+                                "maxNumberOfRecordSets": 25000,
+                                "maxNumberOfVirtualNetworkLinks": 1000,
+                                "maxNumberOfVirtualNetworkLinksWithRegistration": 100,
+                                "numberOfRecordSets": 3,
+                                "numberOfVirtualNetworkLinks": 1,
+                                "numberOfVirtualNetworkLinksWithRegistration": 0,
+                                "provisioningState": "Succeeded"
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Network/privateDnsZones/SOA",
+                            "apiVersion": "2018-09-01",
+                            "name": "[concat(parameters('containerRegistryPrivateLinkDnsZoneName'), '/@')]",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Network/privateDnsZones', parameters('containerRegistryPrivateLinkDnsZoneName'))]"
+                            ],
+                            "properties": {
+                                "ttl": 3600,
+                                "soaRecord": {
+                                    "email": "azureprivatedns-host.microsoft.com",
+                                    "expireTime": 2419200,
+                                    "host": "azureprivatedns.net",
+                                    "refreshTime": 3600,
+                                    "retryTime": 300,
+                                    "serialNumber": 1,
+                                    "minimumTtl": 10
+                                }
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                            "apiVersion": "2018-09-01",
+                            "name": "[concat(parameters('containerRegistryPrivateLinkDnsZoneName'), '/xjfvugx7v554a')]",
+                            "location": "global",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Network/privateDnsZones', parameters('containerRegistryPrivateLinkDnsZoneName'))]"
+                            ],
+                            "properties": {
+                                "registrationEnabled": false,
+                                "virtualNetwork": {
+                                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                                }
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Network/privateEndpoints",
+                            "apiVersion": "2020-05-01",
+                            "name": "[parameters('containerRegistryPrivateLinkName')]",
+                            "location": "[parameters('location')]",
+                            "properties": {
+                                "privateLinkServiceConnections": [
+                                    {
+                                        "name": "[parameters('containerRegistryPrivateLinkName')]",
+                                        "properties": {
+                                            "privateLinkServiceId": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+                                            "groupIds": [
+                                                "registry"
+                                            ],
+                                            "privateLinkServiceConnectionState": {
+                                                "status": "Approved",
+                                                "description": "Auto-Approved",
+                                                "actionsRequired": "None"
+                                            }
+                                        }
+                                    }
+                                ],
+                                "manualPrivateLinkServiceConnections": [],
+                                "subnet": {
+                                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('vnetSubnetName'))]"
+                                },
+                                "customDnsConfigs": []
+                            }
+                        },
+                        {
+                            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+                            "apiVersion": "2020-05-01",
+                            "name": "[concat(parameters('containerRegistryPrivateLinkName'), '/', parameters('vnetSubnetName'))]",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Network/privateEndpoints', parameters('containerRegistryPrivateLinkName'))]",
+                                "[resourceId('Microsoft.Network/privateDnsZones', parameters('containerRegistryPrivateLinkDnsZoneName'))]"
+                            ],
+                            "properties": {
+                                "privateDnsZoneConfigs": [
+                                    {
+                                        "name": "[replace(parameters('containerRegistryPrivateLinkDnsZoneName'),'.','-')]",
+                                        "properties": {
+                                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', parameters('containerRegistryPrivateLinkDnsZoneName'))]"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    "outputs": {}
+                }
+            }
+        },
+        {
+            "name": "ClusterSubnetRoleAssignmentDeployment",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[resourceGroup().name]",
+            "dependsOn": [
+                "[resourceId(subscription().subscriptionId, resourceGroup().name, 'Microsoft.ContainerService/managedClusters', variables('clusterName'))]",
+                "[resourceId('Microsoft.Resources/deployments', 'VirtualNetworkDeployment')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "clusterName": {
+                        "value": "[variables('clusterName')]"
+                    },
+                    "vnetName": {
+                        "value": "[variables('vnetName')]"
+                    },
+                    "vnetSubnetName": {
+                        "value": "[parameters('vnetSubnetName')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "clusterName": {
+                            "type": "string"
+                        },
+                        "vnetName": {
+                            "type": "string"
+                        },
+                        "vnetSubnetName": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {
+                        "clusterId": "[resourceId(subscription().subscriptionId, resourceGroup().name, 'Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
+                    },
+                    "resources": [
+                        {
+                            "type": "Microsoft.Network/virtualNetworks/subnets/providers/roleAssignments",
+                            "apiVersion": "2017-05-01",
+                            "name": "[concat(parameters('vnetName'), '/', parameters('vnetSubnetName'), '/Microsoft.Authorization/7a650e1a-8109-469d-94b8-b4686fb9583c')]",
+                            "properties": {
+                                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '4d97b98b-1d4f-4787-a291-c67834d212e7')]",
+                                "principalId": "[reference(variables('clusterId'), '2020-03-01').identityProfile.kubeletidentity.objectId]",
+                                "scope": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/', parameters('vnetSubnetName'))]"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "ClusterMonitoringMetricPulisherRoleAssignmentDeployment",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[resourceGroup().name]",
+            "dependsOn": [
+                "[resourceId(subscription().subscriptionId, resourceGroup().name, 'Microsoft.ContainerService/managedClusters', variables('clusterName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "clusterName": {
+                        "value": "[variables('clusterName')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "clusterName": {
+                            "type": "string"
+                        }
+                    },
+                    "variables": {
+                        "clusterId": "[resourceId(subscription().subscriptionId, resourceGroup().name, 'Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
+                    },
+                    "resources": [
+                        {
+                            "type": "Microsoft.ContainerService/managedClusters/providers/roleAssignments",
+                            "apiVersion": "2018-01-01-preview",
+                            "name": "[concat(parameters('clusterName'), '/Microsoft.Authorization/7da17030-1bd4-4aa7-9cef-2ddd887eb51a')]",
+                            "properties": {
+                                "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '3913510d-42f4-4e42-8a64-420c390055eb')]",
+                                "principalId": "[reference(variables('clusterId'), '2020-03-01').addonProfiles.omsAgent.identity.objectId]",
+                                "scope": "[variables('clusterId')]"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "functions": [
+        {
+            "namespace": "dsr",
+            "members": {
+                "setSubnetIdInWorkloadNodePool": {
+                    "parameters": [
+                        {
+                            "name": "workloadNodePool",
+                            "type": "object"
+                        },
+                        {
+                            "name": "workloadNodePoolDefaults",
+                            "type": "object"
+                        },
+                        {
+                            "name": "vnetSubnetId",
+                            "type": "string"
+                        }
+                    ],
+                    "output": {
+                        "type": "object",
+                        "value": "[union(parameters('workloadNodePoolDefaults'), json(concat('{\"vnetSubnetId\": \"', parameters('vnetSubnetId'), '\"}')), parameters('workloadNodePool'))]"
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "logAnalyticsWorkspaceId": {
+            "type": "string",
+            "value": "[reference('Microsoft.Resources/deployments/LogAnalyticsWorkspaceDeployment').outputs.logAnalyticsWorkspaceId.value]"
+        },
+        "containerRegistryId": {
+            "type": "string",
+            "value": "[reference('Microsoft.Resources/deployments/ContainerRegistryDeployment').outputs.containerRegistryId.value]"
+        },
+        "vnetId": {
+            "type": "string",
+            "value": "[reference('Microsoft.Resources/deployments/VirtualNetworkDeployment').outputs.vnetId.value]"
+        },
+        "vnetSubnetId": {
+            "type": "string",
+            "value": "[reference('Microsoft.Resources/deployments/VirtualNetworkDeployment').outputs.vnetSubnetId.value]"
+        }
+    }
+}
