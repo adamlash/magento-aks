@@ -281,8 +281,7 @@
             "enableAutoScaling": true,
             "minCount": 3,
             "maxCount": 5,
-            "mode": "User",
-            "availabilityZones": [ "1","2","3" ]
+            "mode": "User"
         },
         "workloadLinuxNodePoolWithSubnetId": "[dsr.setSubnetIdInWorkloadNodePool(parameters('workloadLinuxNodePool'), variables('defaultLinuxPoolProfile'), variables('vnetSubnetId'))]",
         "agentPoolProfiles": "[concat(array(variables('systemPoolProfile')), array(variables('workloadLinuxNodePoolWithSubnetId')))]"
@@ -610,7 +609,7 @@
                         {
                             "apiVersion": "2018-09-01-preview",
                             "type": "Microsoft.ContainerRegistry/registries/providers/roleAssignments",
-                            "name": "[concat(parameters('containerRegistryName'), '/Microsoft.Authorization/9fea2f7c-f0fb-4f7c-ac93-61349d0d196b')]",
+                            "name": "[concat(parameters('containerRegistryName'), '/Microsoft.Authorization/9fea2f7c-f0fb-4f7c-ac93-61349d0d196c')]",
                             "properties": {
                                 "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
                                 "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-03-01').identityProfile.kubeletidentity.objectId]",
@@ -967,7 +966,7 @@
                         {
                             "type": "Microsoft.Network/virtualNetworks/subnets/providers/roleAssignments",
                             "apiVersion": "2017-05-01",
-                            "name": "[concat(parameters('vnetName'), '/', parameters('vnetSubnetName'), '/Microsoft.Authorization/7a650e1a-8109-469d-94b8-b4686fb9583c')]",
+                            "name": "[concat(parameters('vnetName'), '/', parameters('vnetSubnetName'), '/Microsoft.Authorization/7a650e1a-8109-469d-94b8-b4686fb9583b')]",
                             "properties": {
                                 "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '4d97b98b-1d4f-4787-a291-c67834d212e7')]",
                                 "principalId": "[reference(variables('clusterId'), '2020-03-01').identityProfile.kubeletidentity.objectId]",
@@ -1011,7 +1010,7 @@
                         {
                             "type": "Microsoft.ContainerService/managedClusters/providers/roleAssignments",
                             "apiVersion": "2018-01-01-preview",
-                            "name": "[concat(parameters('clusterName'), '/Microsoft.Authorization/7da17030-1bd4-4aa7-9cef-2ddd887eb51a')]",
+                            "name": "[concat(parameters('clusterName'), '/Microsoft.Authorization/7da17030-1bd4-4aa7-9cef-2ddd887eb51b')]",
                             "properties": {
                                 "roleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '3913510d-42f4-4e42-8a64-420c390055eb')]",
                                 "principalId": "[reference(variables('clusterId'), '2020-03-01').addonProfiles.omsAgent.identity.objectId]",
