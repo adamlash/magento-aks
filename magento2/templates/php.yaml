@@ -1,38 +1,39 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "magento.fullname" . }}-web
+  name: {{ template "magento.fullname" . }}-php
   labels:
     app.kubernetes.io/name: {{ template "magento.fullname" . }}
-    app.kubernetes.io/component: nginx
+    app.kubernetes.io/component: php
     helm.sh/chart: {{ template "magento.chart" . }}
     app.kubernetes.io/instance: "{{ .Release.Name }}"
     app.kubernetes.io/managed-by: "{{ .Release.Service }}"
-    
 spec:
   ports:
-  - name: "http"
-    port: 80
+  - name: "fpm"
+    port: 9000
     protocol: TCP
-    targetPort: 80
+    targetPort: 9000
   selector:
-    app.kubernetes.io/component: nginx
+    app.kubernetes.io/component: php
 
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "magento.fullname" . }}-web
+  name: {{ template "magento.fullname" . }}-php
   labels:
     app.kubernetes.io/name: {{ template "magento.fullname" . }}
-    app.kubernetes.io/component: nginx
+    app.kubernetes.io/component: php
     helm.sh/chart: {{ template "magento.chart" . }}
     app.kubernetes.io/instance: "{{ .Release.Name }}"
     app.kubernetes.io/managed-by: "{{ .Release.Service }}"
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/component: nginx
+      app.kubernetes.io/component: php
   strategy:
     rollingUpdate:
       maxSurge: 50%
@@ -42,37 +43,47 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ template "magento.fullname" . }}
-        app.kubernetes.io/component: nginx
+        app.kubernetes.io/component: php
         helm.sh/chart: {{ template "magento.chart" . }}
         app.kubernetes.io/instance: "{{ .Release.Name }}"
         app.kubernetes.io/managed-by: "{{ .Release.Service }}"
     spec:
       containers:
-      - image: {{ .Values.nginx.image | quote }}
-        imagePullPolicy: Always
-        name: {{ template "magento.fullname" . }}-web
+      - image: {{ .Values.php.image | quote }}
+        imagePullPolicy: IfNotPresent
+        name: {{ template "magento.fullname" . }}-php
         ports:
-        - containerPort: 80
+        - containerPort: 9000
           protocol: TCP
+        readinessProbe:
+          failureThreshold: 5
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 9000
+          timeoutSeconds: 1
+        livenessProbe:
+          failureThreshold: 5
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 9000
+          timeoutSeconds: 1
         resources:
-{{ toYaml .Values.nginx.resources | indent 10 }}
+{{ toYaml .Values.php.resources | indent 10 }}
+        env:
+        {{- range $key, $val := .Values.php.env }}
+          - name: {{ $key }}
+            value: {{ $val | quote }}
+        {{- end }}                                                                       
         volumeMounts:
-        - mountPath: /etc/nginx/conf.d/default.conf
-          name: nginx-config
-          subPath: default.conf
-        - mountPath: /var/www/html/magento2.conf
-          name: nginx-config
-          subPath: magento2.conf
         - name: media
           mountPath: /var/www/html/pub/media
         - name: static
           mountPath: /var/www/html/pub/static
-          
       volumes:
-      - configMap:
-          defaultMode: 420
-          name: {{ template "magento.fullname" . }}-nginx-config
-        name: nginx-config
       - name: media
         persistentVolumeClaim:
           claimName: {{ template "magento.fullname" . }}-media
