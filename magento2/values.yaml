@@ -1,0 +1,31 @@
+###############################
+## Nginx Configuration ########
+###############################
+# Configuration for Nginx
+nginx:
+  image: nginx:mainline
+  resources:
+    limits:
+      cpu: 50m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+###############################
+## Persistence Configuration ##
+###############################
+# Configuration for Persistence Values
+# Magento works best wiht 'azurefile-premium' storage classes due to the high IOPS requirement. 
+# ReadWriteMany is required for Static, but may be changed for Media.
+# The Larger the disk the more Provisioned IOPS, please see https://azure.microsoft.com/en-us/pricing/details/storage/files/ for more info
+persistence:
+  static:
+    storageClass: azurefile-premium
+    accessMode: ReadWriteMany
+    size: 200Gi
+  media:
+    storageClass: azurefile-premium
+    accessMode: ReadWriteMany
+    size: 200Gi
+  
