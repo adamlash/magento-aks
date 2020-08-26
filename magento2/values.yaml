@@ -17,7 +17,7 @@ nginx:
 # Configuration for Magento (PHP) Containers
 php:
 # General Configuration
-  image: defaultclustername.azurecr.io/magento2-base:vanillav2
+  image: magento2-base:vanillav2
   resources:
   limits:
     cpu: 250m
@@ -35,7 +35,7 @@ php:
     ADMIN_PASSWORD: secret0
     KEY: 11111111111111111111111111111111
 # Database Configurations
-    DB_HOST: magento2k8s.mysql.database.azure.com
+    DB_HOST: dbname
     DB_NAME: magento
     DB_PASS: 
     DB_ROOT_PASS: 
