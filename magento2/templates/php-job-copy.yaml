@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "magento.fullname" . }}-copy
+  labels:
+    app.kubernetes.io/name: {{ template "magento.fullname" . }}
+    helm.sh/chart: {{ template "magento.chart" . }}
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ include "magento.fullname" . }}-copy
+      labels:
+        app.kubernetes.io/name: {{ template "magento.fullname" . }}
+        helm.sh/chart: {{ template "magento.chart" . }}
+        app.kubernetes.io/instance: "{{ .Release.Name }}"
+        app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: {{ include "magento.fullname" . }}-copy
+        image: {{ .Values.php.image | quote }}
+        command: ["/bin/sh"]
+        args:
+         - -c
+         - |
+           /bin/bash <<'EOF'
+           rsync -rvc /var/www/html/pub/static/frontend/ /tmp/static/frontend/ --delete
+           rsync -rvc /var/www/html/pub/static/adminhtml/ /tmp/static/adminhtml/ --delete
+           rsync -rvc /var/www/html/pub/static/deployed_version.txt /tmp/static/deployed_version.txt --delete
+           EOF
+        volumeMounts:
+        - name: static
+          mountPath: /tmp/static
+      volumes:
+      - name: static
+        persistentVolumeClaim:
+          claimName: {{ template "magento.fullname" . }}-static                  

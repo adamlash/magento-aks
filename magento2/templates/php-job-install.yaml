@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "magento.fullname" . }}-install
+  labels:
+    app.kubernetes.io/name: {{ template "magento.fullname" . }}
+    helm.sh/chart: {{ template "magento.chart" . }}
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ include "magento.fullname" . }}-install
+      labels:
+        app.kubernetes.io/name: {{ template "magento.fullname" . }}
+        helm.sh/chart: {{ template "magento.chart" . }}
+        app.kubernetes.io/instance: "{{ .Release.Name }}"
+        app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: {{ include "magento.fullname" . }}-install
+        image: {{ .Values.php.image | quote }}
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          /bin/bash <<'EOF'
+          echo "Running Install"
+          bin/install.sh
+          echo "Running Upgrade"
+          php bin/magento setup:perf:generate-fixtures setup/performance-toolkit/profiles/ce/small.xml
+          #echo "Running Second Upgrade"
+          #php bin/magento setup:upgrade
+          echo "Run Magerun"
+          magerun index:list | awk '{print $2}' | tail -n+4 | xargs -I{} magerun index:set-mode schedule {}
+          magerun cache:flush
+          # Flush Cache and re-index
+          #php bin/magento cache:flush
+          #sphp bin/magento indexer:reindex
+          EOF
+        env:
+        {{- range $key, $val := .Values.php.env }}
+          - name: {{ $key }}
+            value: {{ $val | quote }}
+        {{- end }}
+        volumeMounts:
+        - name: media
+          mountPath: /var/www/html/pub/media        
+      volumes:
+      - name: media
+        persistentVolumeClaim:
+          claimName: {{ template "magento.fullname" . }}-media
