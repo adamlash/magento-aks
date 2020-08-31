@@ -1,3 +1,4 @@
+{{- if .Values.deployment.upgrade }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -55,3 +56,4 @@ spec:
       - name: media
         persistentVolumeClaim:
           claimName: {{ template "magento.fullname" . }}-media
+{{- end }}

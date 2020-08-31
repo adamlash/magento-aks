@@ -1,4 +1,31 @@
 ###############################
+## Deployment Configuration ###
+###############################
+deployment:
+  # Enable the Seeding/Creation of Magento when doing helm install
+  install: true
+  # Enable the running of hooks to run magento upgrade when doing helm upgrade
+  upgrade: true
+  # Enable the copying of static content to PVC shares
+  copy: true
+###############################
+## Ingress Configuration ######
+###############################
+ingress:
+  enabled: true
+  # Enable Cert Manager Annotations
+  certManager: false
+  # Ingress Controller Annotations/Options, please see below for more info
+  # Ref: https://github.com/kubernetes/ingress-nginx/blob/master/docs/user-guide/nginx-configuration/annotations.md
+  annotations: {}
+  hosts:
+    - name: magento2.local
+      path: /
+      # Allow for TLS
+      tls: false
+      ## Options for TLS
+      # tlsSecret: magento-tls
+###############################
 ## Nginx Configuration ########
 ###############################
 # Configuration for Nginx
