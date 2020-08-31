@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ template "magento.fullname" . }}-static
+  labels:
+    app.kubernetes.io/name: {{ template "magento.fullname" . }}
+    helm.sh/chart: {{ template "magento.chart" . }}
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"  
+spec:
+  accessModes:
+  - {{ .Values.persistence.static.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.static.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.static.size | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ template "magento.fullname" . }}-media
+  labels:
+    app.kubernetes.io/name: {{ template "magento.fullname" . }}
+    helm.sh/chart: {{ template "magento.chart" . }}
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"  
+spec:
+  accessModes:
+  - {{ .Values.persistence.media.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.media.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.media.size | quote }}
