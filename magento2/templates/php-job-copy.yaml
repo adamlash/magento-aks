@@ -1,3 +1,4 @@
+{{- if .Values.deployment.copy }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -41,3 +42,4 @@ spec:
       - name: static
         persistentVolumeClaim:
           claimName: {{ template "magento.fullname" . }}-static                  
+{{- end }}
